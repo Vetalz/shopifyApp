@@ -9,9 +9,9 @@ import {
   Banner,
   Thumbnail
 } from "@shopify/polaris";
-import {gql, useLazyQuery, useQuery} from "@apollo/client";
+import {gql, useLazyQuery} from "@apollo/client";
 import {Loading} from "@shopify/app-bridge-react";
-import {useCallback, useEffect, useMemo, useState} from "react";
+import {useCallback, useEffect, useMemo} from "react";
 
 const GET_PRODUCTS = gql`
   query getProducts($first:Int, $last:Int, $after:String, $before:String) {
@@ -43,7 +43,8 @@ const GET_PRODUCTS = gql`
 
 export function ProductsList() {
   const PRODUCT_PER_PAGE = 2;
-  const [getProducts, {loading, error, data, refetch}] = useLazyQuery(GET_PRODUCTS, {
+  const [getProducts, {loading, error, data}] = useLazyQuery(GET_PRODUCTS, {
+    fetchPolicy: 'no-cache',
     variables: {first: PRODUCT_PER_PAGE, last: null, after:null, before:null}
   });
   const isFetched = useMemo(() => data || error, [data, error]);
@@ -53,22 +54,22 @@ export function ProductsList() {
   }, [])
 
 
-  const onNext = useCallback(() => {
-    refetch({
+  const onNext = useCallback(async () => {
+    await getProducts({variables:{
       first: PRODUCT_PER_PAGE,
       last: null,
       after: data.products.pageInfo.endCursor,
       before: null
-    })
+    }})
   }, [data])
 
-  const onPrevious = useCallback(() => {
-    refetch({
+  const onPrevious = useCallback(async () => {
+    await getProducts({variables:{
       first: null,
       last: PRODUCT_PER_PAGE,
       after: null,
       before: data.products.pageInfo.startCursor
-    })
+    }})
   }, [data])
 
 
