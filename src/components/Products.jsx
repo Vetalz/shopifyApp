@@ -7,11 +7,11 @@ import {
   Page,
   Layout,
   Banner,
-  Thumbnail
+  Thumbnail, Button
 } from "@shopify/polaris";
 import {gql, useLazyQuery} from "@apollo/client";
 import {Loading} from "@shopify/app-bridge-react";
-import {useCallback, useEffect, useMemo} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 
 const GET_PRODUCTS = gql`
   query getProducts($first:Int, $last:Int, $after:String, $before:String) {
@@ -43,14 +43,16 @@ const GET_PRODUCTS = gql`
 
 export function ProductsList() {
   const PRODUCT_PER_PAGE = 2;
-  const [getProducts, {loading, error, data}] = useLazyQuery(GET_PRODUCTS, {
+  const [isFetched, setIsFetched] = useState(false)
+  const [getProducts, {loading, error, data, previousData}] = useLazyQuery(GET_PRODUCTS, {
     fetchPolicy: 'no-cache',
     variables: {first: PRODUCT_PER_PAGE, last: null, after:null, before:null}
   });
-  const isFetched = useMemo(() => data || error, [data, error]);
+  const customData = useMemo(() => loading ? previousData : data, [loading, data])
 
   useEffect(async () => {
     await getProducts();
+    setIsFetched(true)
   }, [])
 
 
@@ -72,8 +74,7 @@ export function ProductsList() {
     }})
   }, [data])
 
-
-  if (loading || !isFetched) {
+  if (!isFetched) {
     return <Loading />;
   }
 
@@ -89,40 +90,43 @@ export function ProductsList() {
       <Layout>
         <Layout.Section>
           <Card title="Products list">
-            <ResourceList
-              resourceName={{singular: 'Product', plural: 'Products'}}
-              items={data.products.edges}
-              renderItem={(item) => {
-                const id = item.node.id
-                const media = (
-                  <Thumbnail
-                    source={item.node.images.edges[0] ? item.node.images.edges[0].node.url : ""}
-                    alt={item.node.images.edges[0] ? item.node.images.edges[0].node.altText : ""}
-                />)
-                const title = item.node.title;
-                const productType = item.node.productType;
+            <div style={{padding: '20px'}}>
+              <ResourceList
+                loading={loading}
+                resourceName={{singular: 'Product', plural: 'Products'}}
+                items={customData.products.edges}
+                renderItem={(item) => {
+                  const id = item.node.id
+                  const media = (
+                    <Thumbnail
+                      source={item.node.images.edges[0] ? item.node.images.edges[0].node.url : ""}
+                      alt={item.node.images.edges[0] ? item.node.images.edges[0].node.altText : ""}
+                  />)
+                  const title = item.node.title;
+                  const productType = item.node.productType;
 
-                return (
-                  <ResourceItem
-                    id = {id}
-                    media = {media}
-                    name = {title}
-                    accessibilityLabel={`View details for ${title}`}
-                  >
-                    <h3>
-                      <TextStyle variation="strong">{title}</TextStyle>
-                    </h3>
-                    <p>{productType}</p>
-                  </ResourceItem>
-                );
-              }}
-            />
-            <Pagination
-              hasPrevious={data.products.pageInfo.hasPreviousPage}
-              onPrevious={onPrevious}
-              hasNext={data.products.pageInfo.hasNextPage}
-              onNext={onNext}
-            />
+                  return (
+                    <ResourceItem
+                      id = {id}
+                      media = {media}
+                      name = {title}
+                      accessibilityLabel={`View details for ${title}`}
+                    >
+                      <h3>
+                        <TextStyle variation="strong">{title}</TextStyle>
+                      </h3>
+                      <p>{productType}</p>
+                    </ResourceItem>
+                  );
+                }}
+              />
+              <Pagination
+                hasPrevious={customData.products.pageInfo.hasPreviousPage}
+                onPrevious={onPrevious}
+                hasNext={customData.products.pageInfo.hasNextPage}
+                onNext={onNext}
+              />
+            </div>
           </Card>
         </Layout.Section>
       </Layout>
