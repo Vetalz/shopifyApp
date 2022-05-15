@@ -15,8 +15,8 @@ import {useCallback, useEffect, useMemo, useState} from "react";
 import {useLocation, useSearchParams, useNavigate} from "react-router-dom";
 
 const GET_PRODUCTS = gql`
-  query getProducts($first:Int, $last:Int, $after:String, $before:String) {
-    products(first:$first, last:$last, after:$after, before:$before) {
+  query getProducts($first:Int, $last:Int, $after:String, $before:String, $sortKey:ProductSortKeys, $reverse:Boolean) {
+    products(first:$first, last:$last, after:$after, before:$before, sortKey:$sortKey, reverse:$reverse) {
       edges {
         node {
           id
@@ -52,7 +52,9 @@ export function ProductsList() {
       first: searchParams.get('before') ? null : PRODUCT_PER_PAGE,
       last: searchParams.get('after') ? null : searchParams.get('before') ? PRODUCT_PER_PAGE : null,
       after: searchParams.get('after'),
-      before: searchParams.get('before')
+      before: searchParams.get('before'),
+      sortKey: searchParams.get('sortKey') ? searchParams.get('sortKey') : 'TITLE',
+      reverse: searchParams.get('reverse') === 'true'
     }
   });
   const customData = useMemo(() => loading ? previousData : data, [loading, data]);
@@ -72,20 +74,56 @@ export function ProductsList() {
       first: PRODUCT_PER_PAGE,
       last: null,
       after: data.products.pageInfo.endCursor,
-      before: null
+      before: null,
+      sortKey: searchParams.get('sortKey'),
+      reverse: searchParams.get('reverse') === 'true'
     }})
-    setSearchParams({ after: data.products.pageInfo.endCursor })
-  }, [searchParams, data])
+    setSearchParams({
+      after: data.products.pageInfo.endCursor,
+      sortKey: searchParams.get('sortKey'),
+      reverse: searchParams.get('reverse')
+    })
+  }, [customData])
 
   const onPrevious = useCallback(async () => {
     await getProducts({variables:{
       first: null,
       last: PRODUCT_PER_PAGE,
       after: null,
-      before: data.products.pageInfo.startCursor
+      before: data.products.pageInfo.startCursor,
+      sortKey: searchParams.get('sortKey'),
+      reverse: searchParams.get('reverse') === 'true'
     }})
-    setSearchParams({ before: data.products.pageInfo.startCursor })
-  }, [data])
+    setSearchParams({
+      before: data.products.pageInfo.startCursor,
+      sortKey: searchParams.get('sortKey'),
+      reverse: searchParams.get('reverse')
+    })
+  }, [customData])
+
+  const changeSort = async (selected) => {
+    let params = {}
+    switch (selected) {
+      case 'TITLE_ASC':
+        params = { sortKey: 'TITLE', reverse: false }
+        break
+      case 'TITLE_DESC':
+        params = { sortKey: 'TITLE', reverse: true }
+        break
+      case 'CREATED_AT_ASC':
+        params = { sortKey: 'CREATED_AT', reverse: false }
+        break
+      case 'CREATED_AT_DESC':
+        params = { sortKey: 'CREATED_AT', reverse: true }
+        break
+    }
+    setSearchParams(params)
+    await getProducts({variables:{
+        first: PRODUCT_PER_PAGE,
+        sortKey: params.sortKey,
+        reverse: params.reverse
+      }})
+  }
 
   if (!isFetched) {
     return <Loading />;
@@ -108,6 +146,16 @@ export function ProductsList() {
                 loading={loading}
                 resourceName={{singular: 'Product', plural: 'Products'}}
                 items={customData.products.edges}
+                sortValue={searchParams.get('reverse') === 'true'
+                  ? `${searchParams.get('sortKey')}_DESC`
+                  : `${searchParams.get('sortKey')}_ASC`}
+                sortOptions={[
+                  {label: 'Product title A-Z', value: 'TITLE_ASC'},
+                  {label: 'Product title Z-A', value: 'TITLE_DESC'},
+                  {label: 'Created (oldest first)', value: 'CREATED_AT_ASC'},
+                  {label: 'Created (newest first)', value: 'CREATED_AT_DESC'},
+                ]}
+                onSortChange={(selected) => changeSort(selected)}
                 renderItem={(item) => {
                   const id = item.node.id
                   const media = (
