@@ -7,11 +7,12 @@ import {
   Page,
   Layout,
   Banner,
-  Thumbnail, Button
+  Thumbnail
 } from "@shopify/polaris";
 import {gql, useLazyQuery} from "@apollo/client";
-import {Loading} from "@shopify/app-bridge-react";
+import {Loading, useClientRouting, useRoutePropagation} from "@shopify/app-bridge-react";
 import {useCallback, useEffect, useMemo, useState} from "react";
+import {useLocation, useSearchParams, useNavigate} from "react-router-dom";
 
 const GET_PRODUCTS = gql`
   query getProducts($first:Int, $last:Int, $after:String, $before:String) {
@@ -43,12 +44,22 @@ const GET_PRODUCTS = gql`
 
 export function ProductsList() {
   const PRODUCT_PER_PAGE = 2;
-  const [isFetched, setIsFetched] = useState(false)
+  const [isFetched, setIsFetched] = useState(false);
+  let [searchParams, setSearchParams] = useSearchParams();
   const [getProducts, {loading, error, data, previousData}] = useLazyQuery(GET_PRODUCTS, {
     fetchPolicy: 'no-cache',
-    variables: {first: PRODUCT_PER_PAGE, last: null, after:null, before:null}
+    variables: {
+      first: searchParams.get('before') ? null : PRODUCT_PER_PAGE,
+      last: searchParams.get('after') ? null : searchParams.get('before') ? PRODUCT_PER_PAGE : null,
+      after: searchParams.get('after'),
+      before: searchParams.get('before')
+    }
   });
-  const customData = useMemo(() => loading ? previousData : data, [loading, data])
+  const customData = useMemo(() => loading ? previousData : data, [loading, data]);
+  let navigate = useNavigate();
+  let location = useLocation();
+  useRoutePropagation(location);
+  useClientRouting({replace: navigate})
 
   useEffect(async () => {
     await getProducts();
@@ -63,7 +74,8 @@ export function ProductsList() {
       after: data.products.pageInfo.endCursor,
       before: null
     }})
-  }, [data])
+    setSearchParams({ after: data.products.pageInfo.endCursor })
+  }, [searchParams, data])
 
   const onPrevious = useCallback(async () => {
     await getProducts({variables:{
@@ -72,6 +84,7 @@ export function ProductsList() {
       after: null,
       before: data.products.pageInfo.startCursor
     }})
+    setSearchParams({ before: data.products.pageInfo.startCursor })
   }, [data])
 
   if (!isFetched) {

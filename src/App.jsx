@@ -15,21 +15,24 @@ import translations from "@shopify/polaris/locales/en.json";
 import "@shopify/polaris/build/esm/styles.css";
 
 import {ProductsList} from "./components/Products.jsx";
+import {BrowserRouter} from "react-router-dom";
 
 export default function App() {
   return (
     <PolarisProvider i18n={translations}>
-      <AppBridgeProvider
-        config={{
-          apiKey: process.env.SHOPIFY_API_KEY,
-          host: new URL(location).searchParams.get("host"),
-          forceRedirect: true,
-        }}
-      >
-        <MyProvider>
-          <ProductsList />
-        </MyProvider>
-      </AppBridgeProvider>
+      <BrowserRouter>
+        <AppBridgeProvider
+          config={{
+            apiKey: process.env.SHOPIFY_API_KEY,
+            host: new URL(location).searchParams.get("host"),
+            forceRedirect: true,
+          }}
+        >
+          <MyProvider>
+              <ProductsList />
+          </MyProvider>
+        </AppBridgeProvider>
+      </BrowserRouter>
     </PolarisProvider>
   );
 }
