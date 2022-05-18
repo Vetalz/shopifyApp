@@ -7,16 +7,18 @@ import {
   Page,
   Layout,
   Banner,
-  Thumbnail
+  Thumbnail, Filters, TextField, ChoiceList
 } from "@shopify/polaris";
 import {gql, useLazyQuery} from "@apollo/client";
 import {Loading, useClientRouting, useRoutePropagation} from "@shopify/app-bridge-react";
-import {useCallback, useEffect, useMemo, useState} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useLocation, useSearchParams, useNavigate} from "react-router-dom";
+import { debounce } from "lodash";
 
 const GET_PRODUCTS = gql`
-  query getProducts($first:Int, $last:Int, $after:String, $before:String, $sortKey:ProductSortKeys, $reverse:Boolean) {
-    products(first:$first, last:$last, after:$after, before:$before, sortKey:$sortKey, reverse:$reverse) {
+  query getProducts($first:Int, $last:Int, $after:String, $before:String, 
+                    $sortKey:ProductSortKeys, $reverse:Boolean, $query:String) {
+    products(first:$first, last:$last, after:$after, before:$before, sortKey:$sortKey, reverse:$reverse, query:$query) {
       edges {
         node {
           id
@@ -46,6 +48,7 @@ export function ProductsList() {
   const PRODUCT_PER_PAGE = 2;
   const [isFetched, setIsFetched] = useState(false);
   let [searchParams, setSearchParams] = useSearchParams();
+  const [queryValue, setQueryValue] = useState(searchParams.get('query') ? searchParams.get('query') : '');
   const [getProducts, {loading, error, data, previousData}] = useLazyQuery(GET_PRODUCTS, {
     fetchPolicy: 'no-cache',
     variables: {
@@ -54,14 +57,16 @@ export function ProductsList() {
       after: searchParams.get('after'),
       before: searchParams.get('before'),
       sortKey: searchParams.get('sortKey') ? searchParams.get('sortKey') : 'TITLE',
-      reverse: searchParams.get('reverse') === 'true'
+      reverse: searchParams.get('reverse') === 'true',
+      query: searchParams.get('query')
     }
   });
   const customData = useMemo(() => loading ? previousData : data, [loading, data]);
   let navigate = useNavigate();
   let location = useLocation();
   useRoutePropagation(location);
-  useClientRouting({replace: navigate})
+  useClientRouting({replace: navigate});
+
 
   useEffect(async () => {
     await getProducts();
@@ -76,12 +81,14 @@ export function ProductsList() {
       after: data.products.pageInfo.endCursor,
       before: null,
       sortKey: searchParams.get('sortKey'),
-      reverse: searchParams.get('reverse') === 'true'
+      reverse: searchParams.get('reverse') === 'true',
+      query: searchParams.get('query')
     }})
     setSearchParams({
       after: data.products.pageInfo.endCursor,
       sortKey: searchParams.get('sortKey'),
-      reverse: searchParams.get('reverse')
+      reverse: searchParams.get('reverse'),
+      query: searchParams.get('query')
     })
   }, [customData])
 
@@ -92,12 +99,14 @@ export function ProductsList() {
       after: null,
       before: data.products.pageInfo.startCursor,
       sortKey: searchParams.get('sortKey'),
-      reverse: searchParams.get('reverse') === 'true'
+      reverse: searchParams.get('reverse') === 'true',
+      query: searchParams.get('query')
     }})
     setSearchParams({
       before: data.products.pageInfo.startCursor,
       sortKey: searchParams.get('sortKey'),
-      reverse: searchParams.get('reverse')
+      reverse: searchParams.get('reverse'),
+      query: searchParams.get('query')
     })
   }, [customData])
 
@@ -117,13 +126,44 @@ export function ProductsList() {
         params = { sortKey: 'CREATED_AT', reverse: true }
         break
     }
-    setSearchParams(params)
+    setSearchParams({...params, query:searchParams.get('query')})
     await getProducts({variables:{
         first: PRODUCT_PER_PAGE,
         sortKey: params.sortKey,
-        reverse: params.reverse
+        reverse: params.reverse,
+        query: searchParams.get('query')
       }})
   }
+
+  const handleFiltersQueryChange = async (value) => {
+    setQueryValue(value);
+    setSearchParams({query: value});
+    // debounce(() => {
+    //   console.log('sdff')
+    //   getProducts({variables:{
+    //       first: PRODUCT_PER_PAGE,
+    //       query: `title:${value}*`
+    //     }})
+    // }, 300)
+  }
+
+
+  const handleQueryValueRemove = async () => {
+    setQueryValue('');
+    setSearchParams({});
+    await getProducts();
+  }
+
+  const filterControl = (
+    <Filters
+     queryValue={queryValue}
+     filters={[]}
+     onQueryChange={handleFiltersQueryChange}
+     onClearAll={handleQueryValueRemove}
+     onQueryClear={handleQueryValueRemove}
+    >
+    </Filters>
+  )
 
   if (!isFetched) {
     return <Loading />;
@@ -144,6 +184,7 @@ export function ProductsList() {
             <div style={{padding: '20px'}}>
               <ResourceList
                 loading={loading}
+                filterControl={filterControl}
                 resourceName={{singular: 'Product', plural: 'Products'}}
                 items={customData.products.edges}
                 sortValue={searchParams.get('reverse') === 'true'
