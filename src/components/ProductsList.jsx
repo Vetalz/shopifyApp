@@ -7,7 +7,7 @@ import {
   Thumbnail,
   ResourceItem,
   TextStyle,
-  Banner, Filters
+  Banner, Filters, TextField, ChoiceList
 } from "@shopify/polaris";
 import {gql, useLazyQuery} from "@apollo/client";
 import {useCallback, useEffect, useMemo, useState} from "react";
@@ -43,14 +43,17 @@ const GET_PRODUCTS = gql`
     }
   }`
 const PRODUCT_PER_PAGE = 2;
-const debouncedFetchData = debounce((callback, value) => {
-  callback({query: value})
+const debouncedFetchData = debounce((callback, value, statusValue) => {
+  callback({
+    query: value,
+    status: statusValue
+  })
 }, 500);
 
 export function ProductsList() {
-  const [isFetched, setIsFetched] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [queryValue, setQueryValue] = useState(searchParams.get('query') !== 'null' ? searchParams.get('query') : '')
+  const [queryValue, setQueryValue] = useState(searchParams.get('query') !== 'null' ? searchParams.get('query') : '');
+  const [statusValue, setStatusValue] = useState(searchParams.get('status') !== 'null' ? searchParams.get('status') : null);
   const [getProducts, {loading, error, data, previousData}] = useLazyQuery(GET_PRODUCTS, {
     fetchPolicy: 'no-cache'});
   const customData = useMemo(() => loading ? previousData : data, [loading])
@@ -60,49 +63,86 @@ export function ProductsList() {
   useClientRouting({replace: navigate});
 
   useEffect(async() => {
+    const query = queryValue && statusValue
+      ? `${queryValue} AND status:${statusValue}`
+      : queryValue
+        ? queryValue
+        : statusValue
+          ? `status:${statusValue}`
+          : null
+    const variables = {
+      first: searchParams.get('before') ? null : PRODUCT_PER_PAGE,
+      last: searchParams.get('after') ? null : searchParams.get('before') ? PRODUCT_PER_PAGE : null,
+      after: searchParams.get('after'),
+      before: searchParams.get('before'),
+      query: query
+    }
+
     await getProducts({
-      variables: {
-        first: searchParams.get('before') ? null : PRODUCT_PER_PAGE,
-        last: searchParams.get('after') ? null : searchParams.get('before') ? PRODUCT_PER_PAGE : null,
-        after: searchParams.get('after'),
-        before: searchParams.get('before'),
-        query: searchParams.get('query') !== 'null' ? searchParams.get('query') : null
-      }
+      variables: variables
     });
 
-    setIsFetched(true);
-  },  [searchParams])
-
-  useEffect(() => {
-    if (queryValue !== '') {
-      debouncedFetchData(setSearchParams, queryValue);
-    } else {
-      setSearchParams({})
-    }
-  }, [queryValue])
+  }, [searchParams])
 
   const onPrevious = useCallback(() => {
     setSearchParams({
       before: customData.products.pageInfo.startCursor,
-      query: searchParams.get('query') !== 'null' ? searchParams.get('query') : null
+      query: searchParams.get('query') !== 'null' ? searchParams.get('query') : null,
+      status: searchParams.get('status') !== 'null' ? searchParams.get('status') : null
     })
   }, [customData])
 
   const onNext = useCallback(() => {
     setSearchParams({
       after: customData.products.pageInfo.endCursor,
-      query: searchParams.get('query') !== 'null' ? searchParams.get('query') : null
+      query: searchParams.get('query') !== 'null' ? searchParams.get('query') : null,
+      status: searchParams.get('status') !== 'null' ? searchParams.get('status') : null
     })
   }, [customData])
 
   const handleFiltersQueryChange = useCallback((value) => {
     setQueryValue(value);
-  }, [queryValue])
+    debouncedFetchData(setSearchParams, value, statusValue);
+  }, [queryValue, statusValue])
+
+  const handleProductStatus = useCallback((value) => {
+    setStatusValue(value[0]);
+    setSearchParams({query: queryValue, status: value})
+  },[statusValue, queryValue])
 
   const handleQueryValueRemove = useCallback(() => {
     setQueryValue('');
-    setSearchParams({});
-  }, [queryValue])
+    setSearchParams({status: statusValue});
+  }, [queryValue, statusValue])
+
+  const handleStatusValueRemove = useCallback(() => {
+    setStatusValue(null);
+    setSearchParams({query: queryValue})
+  }, [statusValue, queryValue])
+
+  const handleFiltersClearAll = useCallback(() => {
+    handleQueryValueRemove();
+    handleStatusValueRemove();
+  },[queryValue, statusValue])
+
+  const appliedFilters = [];
+  if (statusValue) {
+    const key = 'productStatus';
+    appliedFilters.push({
+      key,
+      label: disambiguateLabel(key, statusValue),
+      onRemove: handleStatusValueRemove,
+    });
+  }
+
+  function disambiguateLabel(key, value) {
+    switch (key) {
+      case 'productStatus':
+        return `Product status ${value}`;
+      default:
+        return value;
+    }
+  }
 
   const templateItem = (item) => {
     const id = item.node.id
@@ -132,15 +172,34 @@ export function ProductsList() {
   const filterControl = (
     <Filters
       queryValue={queryValue}
-      filters={[]}
+      filters={[
+        {
+          key: 'productStatus',
+          label: 'Product status',
+          filter: (
+            <ChoiceList
+              title="Product status"
+              titleHidden
+              choices={[
+                {label: 'active', value: 'active'},
+                {label: 'draft', value: 'draft'}
+              ]}
+              selected={[statusValue]}
+              onChange={handleProductStatus}
+            />
+          ),
+          shortcut: true,
+        },
+      ]}
+      appliedFilters={appliedFilters}
       onQueryChange={handleFiltersQueryChange}
-      onClearAll={handleQueryValueRemove}
+      onClearAll={handleFiltersClearAll}
       onQueryClear={handleQueryValueRemove}
     >
     </Filters>
   )
 
-  if (!isFetched) {
+  if (!customData) {
     return <Loading />;
   }
 
