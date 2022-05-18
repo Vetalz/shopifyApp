@@ -95,15 +95,14 @@ export function ProductsList() {
     })
   }, [customData])
 
-  const handleFiltersQueryChange = (value) => {
+  const handleFiltersQueryChange = useCallback((value) => {
     setQueryValue(value);
-  }
+  }, [queryValue])
 
-  const handleQueryValueRemove = async () => {
+  const handleQueryValueRemove = useCallback(() => {
     setQueryValue('');
     setSearchParams({});
-
-  }
+  }, [queryValue])
 
   const templateItem = (item) => {
     const id = item.node.id
