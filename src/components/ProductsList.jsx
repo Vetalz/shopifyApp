@@ -17,8 +17,9 @@ import {debounce} from "lodash";
 
 
 const GET_PRODUCTS = gql`
-  query getProducts($first:Int, $last:Int, $after:String, $before:String, $query:String) {
-    products(first:$first, last:$last, after:$after, before:$before, query:$query) {
+  query getProducts($first:Int, $last:Int, $after:String, $before:String, 
+                    $query:String, $sortKey:ProductSortKeys, $reverse:Boolean) {
+    products(first:$first, last:$last, after:$after, before:$before, query:$query, sortKey:$sortKey, reverse:$reverse) {
       edges {
         node {
           id
@@ -43,10 +44,12 @@ const GET_PRODUCTS = gql`
     }
   }`
 const PRODUCT_PER_PAGE = 2;
-const debouncedFetchData = debounce((callback, value, statusValue) => {
+const debouncedFetchData = debounce((callback, value, statusValue, sortValue) => {
   callback({
     query: value,
-    status: statusValue
+    status: statusValue,
+    sortKey: sortValue.sortKey,
+    reverse: sortValue.reverse
   })
 }, 500);
 
@@ -54,6 +57,9 @@ export function ProductsList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [queryValue, setQueryValue] = useState(searchParams.get('query') !== 'null' ? searchParams.get('query') : '');
   const [statusValue, setStatusValue] = useState(searchParams.get('status') !== 'null' ? searchParams.get('status') : null);
+  const [sortValue, setSortValue] = useState({
+    sortKey: 'TITLE',
+    reverse: searchParams.get('reverse') === 'true'});
   const [getProducts, {loading, error, data, previousData}] = useLazyQuery(GET_PRODUCTS, {
     fetchPolicy: 'no-cache'});
   const customData = useMemo(() => loading ? previousData : data, [loading])
@@ -63,6 +69,7 @@ export function ProductsList() {
   useClientRouting({replace: navigate});
 
   useEffect(async() => {
+    console.log(sortValue)
     const query = queryValue && statusValue
       ? `${queryValue} AND status:${statusValue}`
       : queryValue
@@ -75,7 +82,9 @@ export function ProductsList() {
       last: searchParams.get('after') ? null : searchParams.get('before') ? PRODUCT_PER_PAGE : null,
       after: searchParams.get('after'),
       before: searchParams.get('before'),
-      query: query
+      query: query,
+      sortKey: sortValue.sortKey,
+      reverse: sortValue.reverse,
     }
 
     await getProducts({
@@ -88,7 +97,9 @@ export function ProductsList() {
     setSearchParams({
       before: customData.products.pageInfo.startCursor,
       query: searchParams.get('query') !== 'null' ? searchParams.get('query') : null,
-      status: searchParams.get('status') !== 'null' ? searchParams.get('status') : null
+      status: searchParams.get('status') !== 'null' ? searchParams.get('status') : null,
+      sortKey: searchParams.get('sortKey') !== 'null' ? searchParams.get('sortKey') : null,
+      reverse: searchParams.get('reverse') !== 'null' ? searchParams.get('reverse') : null
     })
   }, [customData])
 
@@ -96,29 +107,45 @@ export function ProductsList() {
     setSearchParams({
       after: customData.products.pageInfo.endCursor,
       query: searchParams.get('query') !== 'null' ? searchParams.get('query') : null,
-      status: searchParams.get('status') !== 'null' ? searchParams.get('status') : null
+      status: searchParams.get('status') !== 'null' ? searchParams.get('status') : null,
+      sortKey: searchParams.get('sortKey') !== 'null' ? searchParams.get('sortKey') : null,
+      reverse: searchParams.get('reverse') !== 'null' ? searchParams.get('reverse') : null
     })
   }, [customData])
 
+  const handleSort = useCallback((selected) => {
+    let params = {}
+    switch (selected) {
+      case 'TITLE_ASC':
+        params = {sortKey: 'TITLE', reverse: false}
+        break
+      case 'TITLE_DESC':
+        params = {sortKey: 'TITLE', reverse: true}
+        break
+    }
+    setSortValue(params);
+    setSearchParams({query: queryValue, status: statusValue, sortKey: params.sortKey, reverse: params.reverse})
+  }, [sortValue, queryValue, statusValue])
+
   const handleFiltersQueryChange = useCallback((value) => {
     setQueryValue(value);
-    debouncedFetchData(setSearchParams, value, statusValue);
-  }, [queryValue, statusValue])
+    debouncedFetchData(setSearchParams, value, statusValue, sortValue);
+  }, [queryValue, statusValue, sortValue])
 
   const handleProductStatus = useCallback((value) => {
     setStatusValue(value[0]);
-    setSearchParams({query: queryValue, status: value})
-  },[statusValue, queryValue])
+    setSearchParams({query: queryValue, status: value, sortKey: sortValue.sortKey, reverse: sortValue.reverse})
+  },[statusValue, queryValue, sortValue])
 
   const handleQueryValueRemove = useCallback(() => {
     setQueryValue('');
-    setSearchParams({status: statusValue});
-  }, [queryValue, statusValue])
+    setSearchParams({status: statusValue, sortKey: sortValue.sortKey, reverse: sortValue.reverse});
+  }, [queryValue, statusValue, sortValue])
 
   const handleStatusValueRemove = useCallback(() => {
     setStatusValue(null);
-    setSearchParams({query: queryValue})
-  }, [statusValue, queryValue])
+    setSearchParams({query: queryValue, sortKey: sortValue.sortKey, reverse: sortValue.reverse})
+  }, [statusValue, queryValue, sortValue])
 
   const handleFiltersClearAll = useCallback(() => {
     handleQueryValueRemove();
@@ -222,6 +249,14 @@ export function ProductsList() {
                 filterControl={filterControl}
                 items={customData.products.edges}
                 renderItem={templateItem}
+                sortValue={sortValue.reverse
+                  ? `${sortValue.sortKey}_DESC`
+                  : `${sortValue.sortKey}_ASC` }
+                sortOptions={[
+                  {label: 'Product title A-Z', value: 'TITLE_ASC'},
+                  {label: 'Product title Z-A', value: 'TITLE_DESC'},
+                ]}
+                onSortChange={handleSort}
               />
               <Pagination
                 hasPrevious={customData.products.pageInfo.hasPreviousPage}
