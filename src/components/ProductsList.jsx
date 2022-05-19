@@ -7,7 +7,7 @@ import {
   Thumbnail,
   ResourceItem,
   TextStyle,
-  Banner, Filters, TextField, ChoiceList
+  Banner, Filters, ChoiceList
 } from "@shopify/polaris";
 import {gql, useLazyQuery} from "@apollo/client";
 import {useCallback, useEffect, useMemo, useState} from "react";
@@ -62,14 +62,13 @@ export function ProductsList() {
     reverse: searchParams.get('reverse') === 'true'});
   const [getProducts, {loading, error, data, previousData}] = useLazyQuery(GET_PRODUCTS, {
     fetchPolicy: 'no-cache'});
-  const customData = useMemo(() => loading ? previousData : data, [loading])
+  const customData = useMemo(() => loading ? previousData : data, [loading]);
   let navigate = useNavigate();
   let location = useLocation();
   useRoutePropagation(location);
   useClientRouting({replace: navigate});
 
   useEffect(async() => {
-    console.log(sortValue)
     const query = queryValue && statusValue
       ? `${queryValue} AND status:${statusValue}`
       : queryValue
@@ -91,7 +90,7 @@ export function ProductsList() {
       variables: variables
     });
 
-  }, [searchParams])
+  }, [searchParams]);
 
   const onPrevious = useCallback(() => {
     setSearchParams({
@@ -101,7 +100,7 @@ export function ProductsList() {
       sortKey: searchParams.get('sortKey') !== 'null' ? searchParams.get('sortKey') : null,
       reverse: searchParams.get('reverse') !== 'null' ? searchParams.get('reverse') : null
     })
-  }, [customData])
+  }, [customData]);
 
   const onNext = useCallback(() => {
     setSearchParams({
@@ -111,10 +110,10 @@ export function ProductsList() {
       sortKey: searchParams.get('sortKey') !== 'null' ? searchParams.get('sortKey') : null,
       reverse: searchParams.get('reverse') !== 'null' ? searchParams.get('reverse') : null
     })
-  }, [customData])
+  }, [customData]);
 
   const handleSort = useCallback((selected) => {
-    let params = {}
+    let params = {};
     switch (selected) {
       case 'TITLE_ASC':
         params = {sortKey: 'TITLE', reverse: false}
@@ -124,33 +123,33 @@ export function ProductsList() {
         break
     }
     setSortValue(params);
-    setSearchParams({query: queryValue, status: statusValue, sortKey: params.sortKey, reverse: params.reverse})
-  }, [sortValue, queryValue, statusValue])
+    setSearchParams({query: queryValue, status: statusValue, sortKey: params.sortKey, reverse: params.reverse});
+  }, [sortValue, queryValue, statusValue]);
 
   const handleFiltersQueryChange = useCallback((value) => {
     setQueryValue(value);
     debouncedFetchData(setSearchParams, value, statusValue, sortValue);
-  }, [queryValue, statusValue, sortValue])
+  }, [queryValue, statusValue, sortValue]);
 
   const handleProductStatus = useCallback((value) => {
     setStatusValue(value[0]);
-    setSearchParams({query: queryValue, status: value, sortKey: sortValue.sortKey, reverse: sortValue.reverse})
-  },[statusValue, queryValue, sortValue])
+    setSearchParams({query: queryValue, status: value, sortKey: sortValue.sortKey, reverse: sortValue.reverse});
+  },[statusValue, queryValue, sortValue]);
 
   const handleQueryValueRemove = useCallback(() => {
     setQueryValue('');
     setSearchParams({status: statusValue, sortKey: sortValue.sortKey, reverse: sortValue.reverse});
-  }, [queryValue, statusValue, sortValue])
+  }, [queryValue, statusValue, sortValue]);
 
   const handleStatusValueRemove = useCallback(() => {
     setStatusValue(null);
-    setSearchParams({query: queryValue, sortKey: sortValue.sortKey, reverse: sortValue.reverse})
-  }, [statusValue, queryValue, sortValue])
+    setSearchParams({query: queryValue, sortKey: sortValue.sortKey, reverse: sortValue.reverse});
+  }, [statusValue, queryValue, sortValue]);
 
   const handleFiltersClearAll = useCallback(() => {
     handleQueryValueRemove();
     handleStatusValueRemove();
-  },[queryValue, statusValue])
+  },[queryValue, statusValue]);
 
   const appliedFilters = [];
   if (statusValue) {
@@ -242,7 +241,7 @@ export function ProductsList() {
     <Page>
       <Layout>
         <Layout.Section>
-          <Card title="Products list">
+          <Card>
             <div style={{padding: '20px'}}>
               <ResourceList
                 loading={loading}

@@ -15,7 +15,11 @@ import translations from "@shopify/polaris/locales/en.json";
 import "@shopify/polaris/build/esm/styles.css";
 
 import {ProductsList} from "./components/ProductsList.jsx";
-import {BrowserRouter} from "react-router-dom";
+import {BrowserRouter, Routes, Route} from "react-router-dom";
+import {Navigation, path} from "./components/Navigation.jsx";
+import {Home} from "./components/Home.jsx";
+import {AddProduct} from "./components/AddProduct";
+import {ProductUpdate} from "./components/ProductUpdate";
 
 export default function App() {
   return (
@@ -29,7 +33,14 @@ export default function App() {
           }}
         >
           <MyProvider>
-              <ProductsList />
+            <Navigation />
+            <Routes>
+              <Route path={path.home} element={<Home/>}/>
+              <Route path={path.products} element={<ProductsList/>}/>
+              <Route path={path.add} element={<AddProduct/>}/>
+              <Route path={path.update} element={<ProductUpdate/>}/>
+              <Route path="*" element={<Home/>}/>
+            </Routes>
           </MyProvider>
         </AppBridgeProvider>
       </BrowserRouter>
