@@ -17,9 +17,10 @@ import "@shopify/polaris/build/esm/styles.css";
 import {ProductsList} from "./components/ProductsList.jsx";
 import {BrowserRouter, Routes, Route} from "react-router-dom";
 import {Navigation, path} from "./components/Navigation.jsx";
-import {Home} from "./components/Home.jsx";
+import Home from "./components/Home/index.jsx";
 import {AddProduct} from "./components/AddProduct";
 import {ProductUpdate} from "./components/ProductUpdate";
+
 
 export default function App() {
   return (

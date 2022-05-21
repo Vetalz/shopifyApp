@@ -7,7 +7,7 @@ import {
   Thumbnail,
   ResourceItem,
   TextStyle,
-  Banner, Filters, ChoiceList
+  Banner, Filters, ChoiceList, Button
 } from "@shopify/polaris";
 import {gql, useLazyQuery} from "@apollo/client";
 import {useCallback, useEffect, useMemo, useState} from "react";
@@ -63,10 +63,10 @@ export function ProductsList() {
   const [getProducts, {loading, error, data, previousData}] = useLazyQuery(GET_PRODUCTS, {
     fetchPolicy: 'no-cache'});
   const customData = useMemo(() => loading ? previousData : data, [loading]);
-  let navigate = useNavigate();
-  let location = useLocation();
-  useRoutePropagation(location);
-  useClientRouting({replace: navigate});
+  // let navigate = useNavigate();
+  // let location = useLocation();
+  // useRoutePropagation(location);
+  // useClientRouting({replace: navigate});
 
   useEffect(async() => {
     const query = queryValue && statusValue
@@ -263,6 +263,9 @@ export function ProductsList() {
                 hasNext={customData.products.pageInfo.hasNextPage}
                 onNext={onNext}
               />
+              <div style={{marginTop: "20px"}}>
+                <Button fullWidth primary>Add product</Button>
+              </div>
             </div>
           </Card>
         </Layout.Section>

@@ -7,6 +7,7 @@ import "dotenv/config";
 
 import applyAuthMiddleware from "./middleware/auth.js";
 import verifyRequest from "./middleware/verify-request.js";
+import axios from "axios";
 
 const USE_ONLINE_TOKENS = true;
 const TOP_LEVEL_OAUTH_COOKIE = "shopify_top_level_oauth";
@@ -61,14 +62,34 @@ export async function createServer(
     }
   });
 
-  app.get("/products-count", verifyRequest(app), async (req, res) => {
-    const session = await Shopify.Utils.loadCurrentSession(req, res, true);
-    const { Product } = await import(
-      `@shopify/shopify-api/dist/rest-resources/${Shopify.Context.API_VERSION}/index.js`
-    );
+  // app.get("/products/count", verifyRequest(app), async (req, res) => {
+  //   const session = await Shopify.Utils.loadCurrentSession(req, res, true);
+  //   console.log(session.shop+req.originalUrl)
+  //   const { Product } = await import(
+  //     `@shopify/shopify-api/dist/rest-resources/${Shopify.Context.API_VERSION}/index.jsx`
+  //   );
+  //
+  //   const countData = await Product.count({ session });
+  //   res.status(200).send(countData);
+  // });
 
-    const countData = await Product.count({ session });
-    res.status(200).send(countData);
+  app.get("/products/count", verifyRequest(app), async (req, res) => {
+    const session = await Shopify.Utils.loadCurrentSession(req, res, true);
+    const url = req.route.path + '.json'
+
+    try {
+      const {data} = await axios.get(url, {
+        baseURL: 'https://' + session.shop + '/admin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': session.accessToken
+        },
+        params: req.query,
+      });
+      res.status(200).send(data);
+    } catch (error) {
+      res.status(200).send(error);
+    }
   });
 
   app.post("/graphql", verifyRequest(app), async (req, res) => {
