@@ -39,7 +39,7 @@ export default function App() {
               <Route path={path.home} element={<Home/>}/>
               <Route path={path.products} element={<ProductsList/>}/>
               <Route path={path.add} element={<AddProduct/>}/>
-              <Route path={path.update} element={<ProductUpdate/>}/>
+              <Route path={`${path.update}/:id`} element={<ProductUpdate/>}/>
               <Route path="*" element={<Home/>}/>
             </Routes>
           </MyProvider>

@@ -14,6 +14,7 @@ import {useCallback, useEffect, useMemo, useState} from "react";
 import {Loading, useClientRouting, useRoutePropagation} from "@shopify/app-bridge-react";
 import {useLocation, useNavigate, useSearchParams} from "react-router-dom";
 import {debounce} from "lodash";
+import {path} from "./Navigation.jsx"
 
 
 const GET_PRODUCTS = gql`
@@ -63,7 +64,7 @@ export function ProductsList() {
   const [getProducts, {loading, error, data, previousData}] = useLazyQuery(GET_PRODUCTS, {
     fetchPolicy: 'no-cache'});
   const customData = useMemo(() => loading ? previousData : data, [loading]);
-  // let navigate = useNavigate();
+  let navigate = useNavigate();
   // let location = useLocation();
   // useRoutePropagation(location);
   // useClientRouting({replace: navigate});
@@ -172,6 +173,7 @@ export function ProductsList() {
 
   const templateItem = (item) => {
     const id = item.node.id
+    const pureId = id.split('/')[4]
     const media = (
       <Thumbnail
         source = {item.node.images.edges[0] ? item.node.images.edges[0].node.url : ""}
@@ -185,6 +187,7 @@ export function ProductsList() {
         id= {id}
         media = {media}
         name = {title}
+        onClick={() => navigate(`${path.update}/${pureId}`)}
         accessibilityLabel={`View details for ${title}`}
       >
         <h3>
@@ -264,7 +267,7 @@ export function ProductsList() {
                 onNext={onNext}
               />
               <div style={{marginTop: "20px"}}>
-                <Button fullWidth primary>Add product</Button>
+                <Button fullWidth primary onClick={() => navigate(path.add)}>Add product</Button>
               </div>
             </div>
           </Card>

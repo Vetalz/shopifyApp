@@ -47,7 +47,7 @@ export const Home = ({allCount, activeCount, draftCount, getAllCount, getActiveC
               </h1>
             </Card.Section>
             <Card.Section>
-                <Button fullWidth primary onClick={() => navigate(path.add)}>Add product</Button>
+                <Button fullWidth primary onClick={() => navigate(path.products)}>Products</Button>
             </Card.Section>
           </Card>
         </Layout.Section>

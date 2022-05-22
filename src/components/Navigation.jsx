@@ -7,7 +7,7 @@ export const path = {
   home: '/',
   products: '/products',
   add: '/add-product',
-  update: '/update-product/:id'
+  update: '/update-product'
 }
 export function Navigation() {
   const app = useAppBridge();
@@ -30,7 +30,7 @@ export function Navigation() {
     });
 
     const addLink = AppLink.create(app, {
-      label: 'Add product',
+      label: 'Add/Update product',
       destination: path.add,
     });
 
@@ -38,7 +38,7 @@ export function Navigation() {
       items: [homeLink, productsLink, addLink],
     });
 
-    switch (location.pathname) {
+    switch ('/' + location.pathname.split('/')[1]) {
       case path.home:
         navigationMenu.set({active:homeLink});
         titleBarOption = {title: 'Home'};
@@ -50,6 +50,10 @@ export function Navigation() {
       case path.add:
         navigationMenu.set({active:addLink});
         titleBarOption = {title: 'Add product'};
+        break;
+      case path.update:
+        navigationMenu.set({active:addLink});
+        titleBarOption = {title: 'Update product'};
         break;
       default:
         navigationMenu.set({active:homeLink});

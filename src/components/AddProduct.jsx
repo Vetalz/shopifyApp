@@ -1,5 +1,5 @@
 import React, {useCallback, useState} from 'react';
-import {Page, Layout, Form, FormLayout, TextField, Button, ButtonGroup} from "@shopify/polaris";
+import {Page, Layout, Form, FormLayout, TextField, Button, ButtonGroup, Banner} from "@shopify/polaris";
 import {path} from "./Navigation.jsx";
 import {useNavigate} from "react-router-dom";
 import {gql, useMutation} from "@apollo/client";
@@ -42,6 +42,13 @@ export const AddProduct = () => {
     setDescription('');
     navigate(path.products);
   }, [title, description])
+
+  if (error) {
+    console.warn(error);
+    return (
+      <Banner status="critical">There was an issue add product.</Banner>
+    );
+  }
 
   return (
     <Page>
