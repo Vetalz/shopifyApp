@@ -1,6 +1,7 @@
 import { Shopify } from "@shopify/shopify-api";
 
 import topLevelAuthRedirect from "../helpers/top-level-auth-redirect.js";
+import {SessionModel} from "../models/SessionModel.js";
 
 export default function applyAuthMiddleware(app) {
   app.get("/auth", async (req, res) => {
@@ -49,12 +50,9 @@ export default function applyAuthMiddleware(app) {
       );
 
       const host = req.query.host;
-      app.set(
-        "active-shopify-shops",
-        Object.assign(app.get("active-shopify-shops"), {
-          [session.shop]: session.scope,
-        })
-      );
+
+      const shop = session.shop;
+      await SessionModel.findOneAndUpdate({ shop }, { isActive: true });
 
       const response = await Shopify.Webhooks.Registry.register({
         shop: session.shop,
