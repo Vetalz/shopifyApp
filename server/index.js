@@ -8,12 +8,25 @@ import "dotenv/config";
 import applyAuthMiddleware from "./middleware/auth.js";
 import verifyRequest from "./middleware/verify-request.js";
 import axios from "axios";
+import mongoose from "mongoose";
+import {deleteCallback, loadCallback, storeCallback} from "./sessionStorage.js";
+import {SessionModel} from "./models/SessionModel.js";
 
 const USE_ONLINE_TOKENS = true;
 const TOP_LEVEL_OAUTH_COOKIE = "shopify_top_level_oauth";
 
 const PORT = parseInt(process.env.PORT || "8081", 10);
 const isTest = process.env.NODE_ENV === "test" || !!process.env.VITE_TEST_BUILD;
+
+(async() => {
+  try {
+    await mongoose.connect(`mongodb://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}`+
+      `@${process.env.MONGO_HOST}:${process.env.MONGO_PORT}/${process.env.MONGO_DB}`)
+    console.log('connected to db')
+  } catch (e) {
+    console.log(e)
+  }
+})()
 
 Shopify.Context.initialize({
   API_KEY: process.env.SHOPIFY_API_KEY,
@@ -23,7 +36,12 @@ Shopify.Context.initialize({
   API_VERSION: ApiVersion.April22,
   IS_EMBEDDED_APP: true,
   // This should be replaced with your preferred storage strategy
-  SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
+  // SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
+  SESSION_STORAGE: new Shopify.Session.CustomSessionStorage(
+    storeCallback,
+    loadCallback,
+    deleteCallback
+  ),
 });
 
 // Storing the currently active shops in memory will force them to re-login when your server restarts. You should
@@ -129,6 +147,21 @@ export async function createServer(
       next();
     }
   });
+
+  // app.use("/*", async (req, res, next) => {
+  //   const {shop} = req.query;
+  //   const findShop = await SessionModel.findOne({
+  //     shop,
+  //     isActive: true
+  //   });
+  //
+  //   if (!findShop) {
+  //     await SessionModel.findOneAndUpdate({ shop }, { isActive: true });
+  //     res.redirect(`/auth?${new URLSearchParams(req.query).toString()}`);
+  //   } else {
+  //     next();
+  //   }
+  // });
 
   /**
    * @type {import('vite').ViteDevServer}
